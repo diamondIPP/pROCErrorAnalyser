@@ -17,7 +17,6 @@ def round_down_to(num, val):
 def log_warning(msg):
     t = datetime.now().strftime('%H:%M:%S')
     print '{head} {t} --> {msg}'.format(t=t, msg=msg, head=colored('WARNING:', 'red'))
-    quit()
 
 
 def log_message(msg, overlay=False):
@@ -39,6 +38,10 @@ def ensure_dir(path):
 
 def print_banner(msg, symbol='='):
     print '\n{delim}\n{msg}\n{delim}\n'.format(delim=len(str(msg)) * symbol, msg=msg)
+
+
+def capitalise(string):
+    return ''.join([s.title() for s in string.split('_')])
 
 
 def do_nothing():
