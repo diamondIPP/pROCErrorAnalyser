@@ -10,6 +10,7 @@ from json import load, dump
 from glob import glob
 from Utils import log_message, print_banner, log_warning, make_runplan_string
 from collections import OrderedDict
+from copy import deepcopy
 
 
 class RunSelection(Base):
@@ -58,18 +59,35 @@ class RunSelection(Base):
             self.Selection[run] = False
 
     def show_run_info(self):
-        print 'Run\tCurrent [mA]\tVoltage [kV]\n'
+        print 'Run Current [mA] Voltage [kV]\n'
         for run, dic in self.RunInfo.iteritems():
-            print '{r}\t{c}\t{v}'.format(r=str(run).rjust(3), c=str(dic['Current']).rjust(12), v=str(dic['HV']).rjust(12))
+            print '{r} {c} {v}'.format(r=str(run).rjust(3), c=str(dic['Current']).rjust(12), v=str(dic['HV']).rjust(12))
 
     def show_selected_runs(self):
         """ Prints and overview of all selected runs. """
         selected_runs = self.get_selected_runs()
         print 'The selections contains {n} runs\n'.format(n=len(selected_runs))
-        print 'Run\tCurrent [mA]\tVoltage [kV]\n'
+        print 'Run Current [mA] Voltage [kV]\n'
         for run in selected_runs:
             dic = self.RunInfo[run]
-            print '{r}\t{c}\t{v}'.format(r=str(run).rjust(3), c=str(dic['Current']).rjust(12), v=str(dic['HV']).rjust(12))
+            print '{r} {c} {v}'.format(r=str(run).rjust(3), c=str(dic['Current']).rjust(12), v=str(dic['HV']).rjust(12))
+
+    def show_run_plans(self):
+        """ Print a list of all run plans from the current test campaign to the console. """
+        old = deepcopy(self.Selection)
+        print 'RUN PLAN:'
+        print '  Nr.  {r}  {t}  {ct}  {v}  {cu}'.format(r='Range'.ljust(16), t='Trim', ct='ctrlreg', v='Voltage [kV]'.ljust(14), cu='Current [mA]'.ljust(14))
+        for plan, info in sorted(self.RunPlan.iteritems()):
+            self.reset_selection()
+            self.select_runs_from_runplan(plan)
+            runs = info['runs']
+            run_string = '[{min}, ... , {max}]'.format(min=str(runs[0]).zfill(3), max=str(runs[-1]).zfill(3))
+            voltages, currents = [dic['HV'] for run, dic in self.RunInfo.iteritems() if run in runs], [dic['Current'] for run, dic in self.RunInfo.iteritems() if run in runs]
+            volt_str = '[{min}, ... , {max}]'.format(min=str(min(voltages)).zfill(2), max=str(max(voltages)).zfill(2))
+            cur_str = '[{min}, ... , {max}]'.format(min=str(min(currents)).zfill(2), max=str(max(currents)).zfill(2))
+            plan += ':'
+            print '  {nr}  {r}  {t}  {ct}  {v}  {cu}'.format(nr=plan, r=run_string, t=str(info['trim']).ljust(4), ct=str(info['ctrlreg']).ljust(7), v=volt_str, cu=cur_str)
+        self.Selection = old
 
     def select_run(self, run_number, deselect=False):
         if run_number not in self.RunInfo:
