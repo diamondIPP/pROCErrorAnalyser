@@ -105,6 +105,16 @@ class RunSelection(Base):
     def deselect_runs_in_range(self, min_run, max_run):
         self.select_runs_in_range(min_run, max_run, deselect=True)
 
+    def select_runs_from_runplan(self, plan_nr):
+        self.reset_selection()
+        plan = make_runplan_string(plan_nr)
+        try:
+            runs = self.RunPlan[plan]['runs']
+            self.SelectedRunplan = plan
+            self.select_runs_in_range(runs[0], runs[-1])
+        except KeyError:
+            log_warning('Run plan {r} does not exist!'.format(r=plan))
+
     def save_runplan(self, runplan=None):
         f = open(self.RunPlanPath, 'r+' if isfile(self.RunPlanPath) else 'w')
         runplan = self.RunPlan if runplan is None else runplan
