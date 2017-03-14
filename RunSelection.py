@@ -22,6 +22,8 @@ class RunSelection(Base):
         self.RunInfo = self.load_run_info()
         self.Selection = OrderedDict()
 
+        self.SelectedRunplan = None
+
         self.init_selection()
 
     def load_runplan(self):
