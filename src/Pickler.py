@@ -5,7 +5,7 @@
 # --------------------------------------------------------
 
 from os.path import join
-from Utils import ensure_dir, log_warning, do_nothing
+from Utils import ensure_dir, log_warning
 from pickle import dump, load
 
 
@@ -30,22 +30,24 @@ class Pickler(object):
         tot_name = '_'.join([item for item in [name, campaign, run, ch, suf] if item])
         self.Path = join(self.Dir, sub_dir, '{n}.pickle'.format(n=tot_name))
 
-    def run(self, function, value=None, params=None):
-        if not self.Path:
+    def get_path(self):
+        if self.Path is None:
             log_warning('Set the path first!')
-            return
+        return self.Path
+
+    def run(self, function, value=None, params=None):
         if value is not None:
-            f = open(self.Path, 'w')
+            f = open(self.get_path(), 'w')
             dump(value, f)
             f.close()
             return value
         try:
-            f = open(self.Path, 'r')
+            f = open(self.get_path(), 'r')
             ret_val = load(f)
             f.close()
         except IOError:
+            f = open(self.get_path(), 'w')
             ret_val = function() if params is None else function(params)
-            f = open(self.Path, 'w')
             dump(ret_val, f)
             f.close()
         return ret_val
