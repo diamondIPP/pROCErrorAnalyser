@@ -44,5 +44,10 @@ def capitalise(string):
     return ''.join([s.title() for s in string.split('_')])
 
 
+def make_runplan_string(nr):
+    nr = str(nr)
+    return nr.zfill(2) if len(nr) <= 2 else nr.zfill(4)
+
+
 def do_nothing():
     pass
