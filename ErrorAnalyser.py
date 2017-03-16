@@ -98,8 +98,10 @@ class ErrorAnalyser:
         return self.get_pixel_error('invalid_pulse_height')
 
     def calc_buffer_proportion(self, prnt=True):
-        n = self.get_buffer_errors() / float(self.get_valid_hits()) * 100
-        print '{0:6.4f}% Buffer Corruptions'.format(n) if prnt else do_nothing()
+        n = self.get_buffer_errors() / float(self.get_valid_hits()) * 1000
+        if prnt:
+            print '{0:6.4f}% Buffer Corruptions'.format(n)
+        return n
 
     def draw_time_bes(self, show=True):
         h = TProfile('h_tbe', 'Time Evolution of the Buffer Corruptions', *self.EventBins)
@@ -210,7 +212,7 @@ class ErrorAnalyser:
                     cut.Draw('same')
                 self.Drawer.Drawings.append(cut)
 
-    def draw_run_info(self, canvas, show=True, x=1, y=1, runs=None):
+    def draw_run_info(self, canvas, show=True, x=1, y=1, runs=None, redo=False):
         """ Draws the run infos inside the canvas. If no canvas is given, it will be drawn into the active Pad. """
         if show:
             canvas.cd()
@@ -221,23 +223,21 @@ class ErrorAnalyser:
             if not canvas.GetBottomMargin() > .105:
                 canvas.SetBottomMargin(0.15)
 
-        if self.Drawer.RunInfoLegends is None:
+        if self.Drawer.RunInfoLegends is None or redo:
             # git_text = TLegend(.85, 0, 1, .025)
             # git_text.AddEntry(0, 'git hash: {ver}'.format(ver=check_output(['git', 'describe', '--always'])), '')
             # git_text.SetLineColor(0)
             if runs is None:
-                run_string = 'Run {run}: {rate}, {dur} Min ({evts} evts)'.format(run=self.RunNumber, rate=self.get_hit_rate(False, True), dur=dur, evts=self.NEntries)
+                run_string = 'Run {run}: {rate}, {dur} Min ({evts:3.1f}mio evts)'.format(run=self.RunNumber, rate=self.get_hit_rate(False, True), dur=dur, evts=self.NEntries / 1e6)
             else:
-                # run_string = 'Runs {start}-{stop} ({flux1} - {flux2})'.format(start=runs[0], stop=runs[1], flux1=runs[2].strip(' '), flux2=runs[3].strip(' '))
                 run_string = 'Runs {start}-{stop}'.format(start=runs[0], stop=runs[-1])
-            width = len(run_string) * .011 if x == y else len(run_string) * 0.015 * y / x
-            legend = self.Drawer.make_legend(.005, .1, y1=.003, x2=width, nentries=3, felix=False, scale=.75)
+            mod_string = 'Module: M1109 @ {bias}kV and {cur}mA'.format(bias=self.Voltage, cur=self.Current) if runs is None else 'Module: M1109'
+
+            width = max(len(run_string), len(mod_string)) * .012 if x == y else len(run_string) * 0.015 * y / x
+            legend = make_legend(.005, .1, y1=.003, x2=width, nentries=3, scale=.75)
             legend.SetMargin(0.05)
             legend.AddEntry(0, run_string, '')
-            if runs is None:
-                legend.AddEntry(0, 'Module: M1109 @ {bias}kV and {cur}mA'.format(bias=self.Voltage, cur=self.Current), '')
-            else:
-                legend.AddEntry(0, 'Module: M1109', '')
+            legend.AddEntry(0, mod_string, '')
             # self.RunInfoLegends = [legend, git_text]
             self.Drawer.RunInfoLegends = [legend]
         else:
@@ -263,8 +263,8 @@ class ErrorAnalyser:
             # return legend, git_text
             return legend
 
+
 if __name__ == '__main__':
-    # command line argument parsing
 
     parser = ArgumentParser(prog='ErrorAnalyser')
     parser.add_argument('run', nargs='?', help='run number', default=16, type=int)
@@ -272,5 +272,4 @@ if __name__ == '__main__':
 
     print_banner('STARTING ERROR ANALYSER FOR RUN {r}'.format(r=args.run))
 
-    # start command line
     z = ErrorAnalyser(args.run)
