@@ -47,13 +47,13 @@ class ErrorAnalyser:
         for file_name in glob(joinpath(self.DataDir, '*')):
             if str(run).zfill(3) in file_name:
                 return file_name
-        log_critical('Did not find run {r} in {d}'.format(r=run, d=self.DataDir))
+        raise IOError('Could not find run {r} in {d}'.format(r=run, d=self.DataDir))
 
     def get_valid_hits(self):
         self.Pickler.set_path('ValidHits')
 
         def func():
-            log_message('Getting valid hits...')
+            log_message('Getting valid hits for run {r} ...'.format(r=self.RunNumber))
             return int(self.Tree.Draw('plane', 'buffer_corruption<1', 'goff'))
         return self.Pickler.run(func)
 
@@ -61,14 +61,15 @@ class ErrorAnalyser:
         self.Pickler.set_path('ValidEvents')
 
         def func():
-            log_message('Getting valid events...')
+            log_message('Getting valid events for run {r} ...'.format(r=self.RunNumber))
             return int(self.Tree.GetEntries('plane&&buffer_corruption<1'))
         return self.Pickler.run(func)
 
     def get_hit_rate(self, prnt=True, string=False):
         rate = self.get_valid_hits() / (2.5e-8 * self.NEntries)
         r_string = '{0:5.1f} MHz'.format(rate / 1000000)
-        print 'Hit Rate:   {r}'.format(r=r_string) if prnt else do_nothing()
+        if prnt:
+            print 'Hit Rate:   {r}'.format(r=r_string)
         return rate if not string else r_string
 
     def get_event_rate(self,  prnt=True, string=False):
@@ -81,7 +82,7 @@ class ErrorAnalyser:
         self.Pickler.set_path('BufferCorruptions')
 
         def func():
-            log_message('Getting buffer corruptions...')
+            log_message('Getting buffer corruptions for run {r} ...'.format(r=self.RunNumber))
             n = self.Tree.Draw('buffer_corruption', 'buffer_corruption > 0', 'goff')
             return sum(self.Tree.GetV1()[i] for i in xrange(n))
         return self.Pickler.run(func)
