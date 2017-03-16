@@ -26,7 +26,12 @@ class AnalysisCollection:
     def load_collection(self):
         dic = OrderedDict()
         for run in self.Runs:
-            dic[run] = ErrorAnalyser(run)
+            try:
+                dic[run] = ErrorAnalyser(run)
+            except IOError as err:
+                log_warning(err)
+        if not dic:
+            log_critical('Empty collection')
         return dic
 
     def get_hit_rates(self):
