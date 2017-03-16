@@ -5,14 +5,19 @@
 # --------------------------------------------------------
 
 from ErrorAnalyser import ErrorAnalyser
+from RunSelection import RunSelection
 from RootDraw import *
 from Utils import print_banner
 from collections import OrderedDict
 
 class AnalysisCollection:
 
-    def __init__(self):
-        self.Runs = range(1, 7)
+    def __init__(self, selection):
+        self.Runs = selection.get_selected_runs()
+        self.RunPlan = selection.SelectedRunPlan
+        self.Trim = selection.RunPlan[self.RunPlan]['trim']
+        self.CTRLREG = selection.RunPlan[self.RunPlan]['ctrlreg']
+
         self.Collection = self.load_collection()
         self.FirstAnalysis = self.Collection.values()[0]
 
@@ -37,13 +42,14 @@ class AnalysisCollection:
         return self.FirstAnalysis.draw_run_info(canvas=canvas, show=show, x=x, y=y, runs=self.Runs)
 
 if __name__ == '__main__':
-    # command line argument parsing
 
-    # parser = ArgumentParser(prog='ErrorAnalyser')
-    # parser.add_argument('run', nargs='?', help='run number', default=1, type=int)
-    # args = parser.parse_args()
+    parser = ArgumentParser(prog='ErrorAnalysisCollection')
+    parser.add_argument('plan', nargs='?', help='run plan', default=2)
+    args = parser.parse_args()
 
     print_banner('STARTING ERROR ANALYSER COLLECTION')
 
     # start command line
-    z = AnalysisCollection()
+    sel = RunSelection()
+    sel.select_runs_from_runplan(args.plan)
+    z = AnalysisCollection(sel)
