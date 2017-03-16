@@ -25,9 +25,11 @@ class ErrorAnalyser:
         self.File = TFile(self.get_file_name(run))
         self.Tree = self.File.Get('tree')
         self.ProgramDir = dirname(realpath(__file__))
+        self.SaveDir = run
 
         self.NCols = 52
         self.NRows = 80
+        self.NRocs = 16
         self.Voltage = self.get_file_name(run).split('-')[1]
         self.Current = self.get_file_name(run).split('-')[2].split('.')[0]
 
@@ -36,7 +38,7 @@ class ErrorAnalyser:
 
         self.Bins2D = [self.NCols, - .5, self.NCols - .5, self.NRows, - .5, self.NRows - .5]
         self.ModBins2D = [self.NCols * 8, - .5, self.NCols * 8 - .5, self.NRows * 2, - .5, self.NRows * 2 - .5]
-        self.EventBins = [self.NEntries / 1e5, 0, self.NEntries]
+        self.EventBins = [int(self.NEntries / 5e3), 0, self.NEntries]
 
         self.Pickler = Pickler(self)
         self.Drawer = RootDraw(self)
