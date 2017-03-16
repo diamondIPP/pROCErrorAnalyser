@@ -100,6 +100,12 @@ class ErrorAnalyser:
         n = self.get_buffer_errors() / float(self.get_valid_hits()) * 100
         print '{0:6.4f}% Buffer Corruptions'.format(n) if prnt else do_nothing()
 
+    def draw_time_bes(self, show=True):
+        h = TProfile('h_tbe', 'Time Evolution of the Buffer Corruptions', *self.EventBins)
+        self.Tree.Draw('buffer_corruption*1000:Entry$>>h_tbe', '', 'goff')
+        format_histo(h, x_tit='Event Number', y_tit='Buffer Corruption [per mill]', y_off=2., stats=0)
+        self.Drawer.draw_histo(h, show=show, lm=.15, rm=.1)
+
     def draw_event_size(self, fit=True, show=True):
         h = TH1I('h_es', 'Event Size', 100, 0, 100)
         self.Tree.Draw('@plane.size()>>h_es', '', 'goff')
