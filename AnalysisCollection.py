@@ -43,6 +43,12 @@ class AnalysisCollection:
     def get_buffer_errors(self):
         return [col.calc_buffer_proportion(False) for col in self.Collection.itervalues()]
 
+    def draw_buffer_errors(self, show=True):
+        gr = make_tgrapherrors('g_bc', 'Buffer Corruptions', x=[r / 1e6 for r in self.get_hit_rates()], y=[e * 1e3 for e in self.get_buffer_errors()])
+        format_histo(gr, x_tit='Hit Rate [MHz]', y_tit='Buffer Corruptions [per million]', y_off=1.5)
+        self.Draw.draw_histo(gr, show=show, draw_opt='alp', lm=.13)
+        return gr
+
 
     def draw_run_info(self, canvas, show=True, x=1, y=1):
         return self.FirstAnalysis.draw_run_info(canvas=canvas, show=show, x=x, y=y, runs=self.Runs)
