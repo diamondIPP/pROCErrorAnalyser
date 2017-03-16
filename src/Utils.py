@@ -7,6 +7,7 @@ from datetime import datetime
 from termcolor import colored
 from os import makedirs
 from os import path as pth
+from os.path import dirname
 from sys import exit as ex
 
 
@@ -31,7 +32,7 @@ def log_critical(msg):
 
 
 def ensure_dir(path):
-    if not pth.exists(path):
+    if not pth.exists(dirname(path)):
         log_message('Creating directory: {d}'.format(d=path))
         makedirs(path)
 
