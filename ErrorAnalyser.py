@@ -78,14 +78,23 @@ class ErrorAnalyser:
         print 'Hit Rate:   {r}'.format(r=r_string) if prnt else do_nothing()
         return rate if not string else r_string
 
-    def get_buffer_errors(self):
-        self.Pickler.set_path('BufferCorruptions')
+    def get_pixel_error(self, name):
+        self.Pickler.set_path('PixelErrors', name=capitalise(name))
 
         def func():
-            log_message('Getting buffer corruptions for run {r} ...'.format(r=self.RunNumber))
-            n = self.Tree.Draw('buffer_corruption', 'buffer_corruption > 0', 'goff')
+            log_message('Getting {n}s for run {r} ...'.format(r=self.RunNumber, n=' '.join(name.split('_'))))
+            n = self.Tree.Draw(name, '{n} > 0'.format(n=name), 'goff')
             return sum(self.Tree.GetV1()[i] for i in xrange(n))
         return self.Pickler.run(func)
+
+    def get_buffer_errors(self):
+        return self.get_pixel_error('buffer_corruption')
+
+    def get_invalid_address(self):
+        return self.get_pixel_error('invalid_address')
+
+    def get_invalid_pulse_height(self):
+        return self.get_pixel_error('invalid_pulse_height')
 
     def calc_buffer_proportion(self, prnt=True):
         n = self.get_buffer_errors() / float(self.get_valid_hits()) * 100
