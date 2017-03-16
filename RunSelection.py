@@ -23,7 +23,7 @@ class RunSelection(Base):
         self.RunInfo = self.load_run_info()
         self.Selection = OrderedDict()
 
-        self.SelectedRunplan = None
+        self.SelectedRunPlan = None
 
         self.init_selection()
 
@@ -76,7 +76,7 @@ class RunSelection(Base):
         """ Print a list of all run plans from the current test campaign to the console. """
         old = deepcopy(self.Selection)
         print 'RUN PLAN:'
-        print '  Nr.  {r}  {t}  {ct}  {v}  {cu}'.format(r='Range'.ljust(16), t='Trim', ct='ctrlreg', v='Voltage [kV]'.ljust(14), cu='Current [mA]'.ljust(14))
+        print '  Nr.    {r}  {t}  {ct}  {v}  {cu}'.format(r='Range'.ljust(16), t='Trim', ct='ctrlreg', v='Voltage [kV]'.ljust(14), cu='Current [mA]'.ljust(14))
         for plan, info in sorted(self.RunPlan.iteritems()):
             self.reset_selection()
             self.select_runs_from_runplan(plan)
@@ -85,8 +85,7 @@ class RunSelection(Base):
             voltages, currents = [dic['HV'] for run, dic in self.RunInfo.iteritems() if run in runs], [dic['Current'] for run, dic in self.RunInfo.iteritems() if run in runs]
             volt_str = '[{min}, ... , {max}]'.format(min=str(min(voltages)).zfill(2), max=str(max(voltages)).zfill(2))
             cur_str = '[{min}, ... , {max}]'.format(min=str(min(currents)).zfill(2), max=str(max(currents)).zfill(2))
-            plan += ':'
-            print '  {nr}  {r}  {t}  {ct}  {v}  {cu}'.format(nr=plan, r=run_string, t=str(info['trim']).ljust(4), ct=str(info['ctrlreg']).ljust(7), v=volt_str, cu=cur_str)
+            print '  {nr}:  {r}  {t}  {ct}  {v}  {cu}'.format(nr=plan.ljust(4), r=run_string, t=str(info['trim']).ljust(4), ct=str(info['ctrlreg']).ljust(7), v=volt_str, cu=cur_str)
         self.Selection = old
 
     def select_run(self, run_number, deselect=False):
@@ -110,7 +109,7 @@ class RunSelection(Base):
         plan = make_runplan_string(plan_nr)
         try:
             runs = self.RunPlan[plan]['runs']
-            self.SelectedRunplan = plan
+            self.SelectedRunPlan = plan
             self.select_runs_in_range(runs[0], runs[-1])
         except KeyError:
             log_warning('Run plan {r} does not exist!'.format(r=plan))
