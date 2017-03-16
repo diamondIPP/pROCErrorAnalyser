@@ -40,11 +40,9 @@ class AnalysisCollection:
     def get_hit_rates(self):
         return [col.get_hit_rate(False) for col in self.Collection.itervalues()]
 
-    def draw_buffer_errors(self):
-        errors = [col.calc_buffer_proportion(False) for col in self.Collection.itervalues()]
-        gr = make_tgrapherrors('g_bc', 'Buffer Corruptions', x=self.get_hit_rates(), y=errors)
-        format_histo(gr)
-        self.Draw.draw_histo(gr, draw_opt='alp')
+    def get_buffer_errors(self):
+        return [col.calc_buffer_proportion(False) for col in self.Collection.itervalues()]
+
 
     def draw_run_info(self, canvas, show=True, x=1, y=1):
         return self.FirstAnalysis.draw_run_info(canvas=canvas, show=show, x=x, y=y, runs=self.Runs)
