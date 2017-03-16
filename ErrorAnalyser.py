@@ -4,16 +4,17 @@
 # created on February 28th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from ROOT import TFile, TH2I, TCutG, TLegend, TH1I, TF1, TProfile
+from ROOT import TFile, TH2F, TH2I, TCutG, TH1I, TF1, TProfile
 from argparse import ArgumentParser
 from sys import path
 from os.path import join as joinpath
 from os.path import dirname, realpath
 path.insert(1, joinpath(dirname(realpath(__file__)), 'src'))
 from RootDraw import *
-from Utils import print_banner, log_critical
+from Utils import print_banner, capitalise
 from glob import glob
 from Pickler import Pickler
+from numpy import ceil, zeros
 
 
 class ErrorAnalyser:
@@ -130,23 +131,71 @@ class ErrorAnalyser:
         self.Drawer.draw_histo(h, draw_opt='colz', lm=.13, rm=0.17, show=show)
 
     def draw_module_occupancy(self, show=True):
-        h = TH2I('h_moc', 'Module Occupancy', *self.ModBins2D)
-        self.Tree.SetEstimate(self.Tree.Draw('plane', '', 'goff'))
-        n = self.Tree.Draw('col:row:plane', '', 'goff')
-        planes = [int(self.Tree.GetV3()[i]) for i in xrange(n)]
-        rows = [int(self.Tree.GetV2()[i]) for i in xrange(n)]
-        cols = [int(self.Tree.GetV1()[i]) for i in xrange(n)]
-        for pl, row, col in zip(planes, rows, cols):
-            roc = (pl - 12) % 16
-            x_off = self.NCols * (roc % 8)
-            y_off = self.NRows * int(roc / 8)
-            y = (row + y_off) if (roc < 8) else (2 * y_off - row - 1)
-            # Reverse order of the upper ROC row:
-            x = (col + x_off) if (roc < 8) else (8 * self.NCols - 1 - x_off - col)
-            h.Fill(x, y)
+        self.Pickler.set_path('Histos', name='ModOccupancy')
+
+        def func():
+            hits_per_event = self.get_valid_hits() / float(self.get_valid_events())
+            data = [zeros((self.NCols, self.NRows)) for _ in xrange(self.NRocs)]
+            n_events = int(1e7 / hits_per_event)
+            for i in xrange(int(ceil(self.get_valid_hits() / 1e7))):
+                # print i
+                self.Tree.SetEstimate(self.Tree.Draw('plane', 'row!=80', 'goff', n_events, i * n_events))
+                n = self.Tree.Draw('col:row:plane', 'row!=80', 'goff', n_events, i * n_events)
+                for j in xrange(n):
+                    data[int(self.Tree.GetV3()[j])][int(self.Tree.GetV1()[j])][int(self.Tree.GetV2()[j])] += 1
+            return self.draw_map(data, show=False)
+        h = self.Pickler.run(func)
+        self.Drawer.draw_histo(h, draw_opt='colz', lm=.055, rm=0.105, show=show, x=2, y=.6, f=self.draw_module_grid)
+        return h
+
+    def draw_buffer_map(self, rel=False, show=True):
+        self.Pickler.set_path('Histos', name='BufErrors{m}'.format(m='Rel' if rel else 'Abs'))
+
+        def func():
+            log_message('Drawing buffer map for run {r}'.format(r=self.RunNumber))
+            good_data = [zeros(self.NCols) for _ in xrange(self.NRocs)]
+            if rel:
+                h1 = self.draw_module_occupancy(show=False)
+                for col in xrange(h1.GetNbinsX()):
+                    for row in xrange(h1.GetNbinsY()):
+                        # r = row if row < self.NRows else 2 * self.NRows - row - 1
+                        c = col % self.NCols if row < self.NRows else (8 * self.NCols - 1 - col) % self.NCols
+                        roc = col / self.NCols if row < self.NRows else 15 - col / self.NCols
+                        pl = (roc - 12) % 16
+                        good_data[pl][c] += h1.GetBinContent(col + 1, row + 1)
+            bad_data = [zeros(self.NCols) for _ in xrange(self.NRocs)]
+            self.Tree.SetEstimate(self.Tree.Draw('plane', 'buffer_corruption', 'goff'))
+            n = self.Tree.Draw('col:row:plane', 'buffer_corruption', 'goff')
+            for i in xrange(n):
+                try:
+                    bad_data[int(self.Tree.GetV3()[i])][int(self.Tree.GetV1()[i])] += 1
+                except IndexError as err:
+                    log_warning('Column out of range: {e}'.format(e=err))
+            data = [zeros((self.NCols, self.NRows)) for _ in xrange(self.NRocs)]
+            for pl in xrange(self.NRocs):
+                for col in xrange(self.NCols):
+                    for row in xrange(self.NRows):
+                        data[pl][col][row] = bad_data[pl][col] / (float(good_data[pl][col]) + bad_data[pl][col]) * 1000 if rel else bad_data[pl][col]
+            return self.draw_map(data, False)
+        h = self.Pickler.run(func)
+        format_histo(h, name='Buffer Corruptions', z_tit='Number of Errors' if not rel else 'Buffer Errors [per mill]', stats=0)
+        self.Drawer.draw_histo(h, draw_opt='colz', lm=.055, rm=0.105, show=show, x=2, y=.6, f=self.draw_module_grid)
+        return h
+
+    def draw_map(self, data, show=True):
+        h = TH2F('h_moc', 'Module Occupancy', *self.ModBins2D)
+        for ipl, pl in enumerate(data):
+            for ix, col in enumerate(pl):
+                for iy, row in enumerate(col):
+                    roc = (ipl + 12) % 16
+                    x_off = self.NCols * (roc % 8)
+                    # Reverse order of the upper ROC row:
+                    y = iy if (roc < 8) else (2 * self.NRows - iy - 1)
+                    x = (ix + x_off) if (roc < 8) else (8 * self.NCols - 1 - x_off - ix)
+                    h.SetBinContent(x + 1, y + 1, row)
         format_histo(h, x_tit='col', y_tit='row', z_tit='Number of Entries', y_off=.45, z_off=.5, stats=0, lab_size=.06, tit_size=.06)
-        self.Drawer.draw_histo(h, draw_opt='colz', lm=.055, rm=0.105, show=show, x=2, y=.6)
-        self.draw_module_grid(show)
+        self.Drawer.draw_histo(h, draw_opt='colz', lm=.055, rm=0.105, show=show, x=2, y=.6, f=self.draw_module_grid)
+        return h
 
     def draw_module_grid(self, show=True):
         for i in xrange(2):
