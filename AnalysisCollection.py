@@ -49,9 +49,28 @@ class AnalysisCollection:
         self.Draw.draw_histo(gr, show=show, draw_opt='alp', lm=.13)
         return gr
 
+    def draw_module_occupancy(self, show=True):
+        histos = [col.draw_module_occupancy(show=False) for col in self.Collection.itervalues()]
+        hist = histos.pop(0)
+        for h in histos:
+            hist.Add(h)
+        format_histo(hist, title='Accumulated Module Occupancy', stats=0)
+        self.Draw.draw_histo(hist, draw_opt='colz', lm=.055, rm=0.105, show=show, x=2, y=.6, f=self.FirstAnalysis.draw_module_grid())
+
+    def draw_buffer_map(self, show=True, rel=False, consecutive=False):
+        histos = [col.draw_buffer_map(show=False, rel=rel) for col in self.Collection.itervalues()]
+        hist = histos.pop(0)
+        for i, h in enumerate(histos, 2):
+            hist.Add(h)
+            if consecutive:
+                format_histo(hist, title='Accumulated Buffer Errors {i}'.format(i=i), stats=0, draw_first=True)
+                self.Draw.save_histo(hist, 'AccumulatedBufferErrors{i}'.format(i=str(i).zfill(2)), draw_opt='colz', lm=.055, rm=0.105, show=False,
+                                     x_fac=2, y_fac=.6, f=self.FirstAnalysis.draw_module_grid())
+        format_histo(hist, title='Accumulated Buffer Errors', stats=0)
+        self.Draw.draw_histo(hist, draw_opt='colz', lm=.055, rm=0.105, show=show, x=2, y=.6, f=self.FirstAnalysis.draw_module_grid())
 
     def draw_run_info(self, canvas, show=True, x=1, y=1):
-        return self.FirstAnalysis.draw_run_info(canvas=canvas, show=show, x=x, y=y, runs=self.Runs)
+        return self.FirstAnalysis.draw_run_info(canvas=canvas, show=show, x=x, y=y, runs=self.Runs, redo=True)
 
 if __name__ == '__main__':
 
