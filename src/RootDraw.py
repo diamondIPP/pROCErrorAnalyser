@@ -3,11 +3,11 @@
 # created on February 28th 2017 by M. Reichmann (remichae@phys.ethz.ch)
 # --------------------------------------------------------
 
-from ROOT import gROOT, gStyle, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, kCyan, kTeal, TCanvas, TLegend, TGraphErrors, TGraphAsymmErrors
+from ROOT import gROOT, gStyle, kGreen, kOrange, kViolet, kYellow, kRed, kBlue, kMagenta, kAzure, kCyan, kTeal, TCanvas, TLegend, TGraphErrors, TGraphAsymmErrors, TMultiGraph
 from screeninfo import get_monitors
 from Utils import round_down_to, log_warning, do_nothing, ensure_dir, log_message
 from os.path import join as joinpath
-from os.path import dirname, realpath, split
+from os.path import dirname, realpath, split, join
 from numpy import array
 
 
@@ -21,6 +21,7 @@ class RootDraw:
         self.Title = True
         self.Res = self.load_resolution()
         self.ResultsDir = joinpath(split(dirname(realpath(__file__)))[0], 'Results')
+        self.SaveDir = self.Analysis.SaveDir
 
         # colors
         self.Count = 0
@@ -28,6 +29,8 @@ class RootDraw:
         self.FillColor = 821
 
         gStyle.SetLegendFont(42)
+        self.Palette = 55
+        set_palette(self.Palette)
 
     def get_color(self):
         self.Count %= 20
@@ -38,7 +41,8 @@ class RootDraw:
     def reset_colors(self):
         self.Count = 0
 
-    def load_resolution(self):
+    @staticmethod
+    def load_resolution():
         try:
             m = get_monitors()
             return round_down_to(m[0].height, 500)
@@ -55,8 +59,6 @@ class RootDraw:
             except Exception as inst:
                 print log_warning('Error in save canvas: {err}'.format(err=inst))
                 return
-        channel = self.channel if hasattr(self, 'channel') else None
-        channel = self.Dut - 4 if hasattr(self, 'Dut') else channel
         try:
             self.Analysis.draw_run_info(canvas=canvas, x=x, y=y)
         except AttributeError as err:
@@ -70,14 +72,13 @@ class RootDraw:
                 print log_warning('Error in save_canvas:\n{0}'.format(inst))
 
     def save_canvas(self, canvas, sub_dir=None, name=None, print_names=True, show=True):
-        sub_dir = self.save_dir if hasattr(self, 'save_dir') and sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
+        sub_dir = self.SaveDir if hasattr(self, 'SaveDir') and sub_dir is None else '{subdir}/'.format(subdir=sub_dir)
         canvas.Update()
         file_name = canvas.GetName() if name is None else name
-        file_path = '{save_dir}{res}/{{typ}}/{file}'.format(res=sub_dir, file=file_name, save_dir=self.ResultsDir)
+        # file_path = '{save_dir}{res}/{{typ}}/{file}'.format(res=sub_dir, file=file_name, save_dir=self.ResultsDir)
+        file_path = join(self.ResultsDir, sub_dir, '{typ}', file_name)
         ftypes = ['root', 'png', 'pdf', 'eps']
         out = 'Saving plots: {nam}'.format(nam=name)
-        run_number = self.run_number if hasattr(self, 'run_number') else None
-        run_number = 'rp{nr}'.format(nr=self.run_plan) if hasattr(self, 'run_plan') else run_number
         set_root_output(show)
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
         for f in ftypes:
@@ -91,7 +92,7 @@ class RootDraw:
         set_root_output(True)
 
     def save_histo(self, histo, save_name='test', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=None, draw_opt='', x_fac=None, y_fac=None,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, ch='dia', prnt=True, phi=None, theta=None):
+                   l=None, logy=False, logx=False, logz=False, canvas=None, gridx=False, gridy=False, save=True, prnt=True, phi=None, theta=None, f=None):
         if tm is None:
             tm = .1 if self.Title else .03
         x = self.Res if x_fac is None else int(x_fac * self.Res)
@@ -112,24 +113,19 @@ class RootDraw:
             l = [l] if type(l) is not list else l
             for i in l:
                 i.Draw()
+        if f is not None:
+            f()
         self.save_plots(save_name, sub_dir=sub_dir, x=x_fac, y=y_fac, prnt=prnt, save=save, show=show)
         set_root_output(True)
         lst = [c, h, l] if l is not None else [c, h]
         self.Drawings.append(lst)
 
     def draw_histo(self, histo, save_name='', show=True, sub_dir=None, lm=.1, rm=.03, bm=.15, tm=.1, draw_opt='', x=None, y=None,
-                   l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, ch='dia', prnt=True, phi=None, theta=None):
-        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, gridx, gridy, False, ch, prnt, phi, theta)
+                   l=None, logy=False, logx=False, logz=False, canvas=None, gridy=False, gridx=False, prnt=True, phi=None, theta=None, f=None):
+        return self.save_histo(histo, save_name, show, sub_dir, lm, rm, bm, tm, draw_opt, x, y, l, logy, logx, logz, canvas, gridx, gridy, False, prnt, phi, theta, f)
 
-    def make_legend(self, x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, felix=False, margin=.25, x2=None):
-        x2 = .95 if x2 is None else x2
-        y1 = y2 - nentries * .05 * scale if y1 is None else y1
-        l = TLegend(x1, y1, x2, y2)
-        l.SetName(name)
-        l.SetTextFont(42)
-        l.SetTextSize(0.03 * scale)
-        l.SetMargin(margin)
-        return l
+    def reset_palette(self):
+        gStyle.SetPalette(self.Palette)
 
 
 def format_histo(histo, name='', title='', x_tit='', y_tit='', z_tit='', marker=20, color=1, markersize=1, x_off=None, y_off=None, z_off=None, lw=1, fill_color=0,
@@ -218,6 +214,21 @@ def make_tgrapherrors(name, title, color=1, marker=20, marker_size=1, width=1, a
     return gr
 
 
+def make_legend(x1=.65, y2=.88, nentries=2, scale=1, name='l', y1=None, margin=.25, x2=None):
+    x2 = .95 if x2 is None else x2
+    y1 = y2 - nentries * .05 * scale if y1 is None else y1
+    l = TLegend(x1, y1, x2, y2)
+    l.SetName(name)
+    l.SetTextFont(42)
+    l.SetTextSize(0.03 * scale)
+    l.SetMargin(margin)
+    return l
+
+
+def make_tmultigraph(name, title):
+    return TMultiGraph(name, title)
+
+
 def set_statbox(x=.95, y=.88, w=.16, entries=3, only_fit=False, opt=None, form=None):
     if only_fit:
         gStyle.SetOptStat(0011)
@@ -237,3 +248,7 @@ def set_root_output(status=True):
     else:
         gROOT.SetBatch(1)
         gROOT.ProcessLine("gErrorIgnoreLevel = kError;")
+
+
+def set_palette(nr):
+    gStyle.SetPalette(nr)
