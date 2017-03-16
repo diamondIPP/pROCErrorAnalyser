@@ -7,8 +7,10 @@
 from ErrorAnalyser import ErrorAnalyser
 from RunSelection import RunSelection
 from RootDraw import *
-from Utils import print_banner
+from Utils import print_banner, log_critical, make_runplan_string
 from collections import OrderedDict
+from argparse import ArgumentParser
+
 
 class AnalysisCollection:
 
@@ -21,6 +23,7 @@ class AnalysisCollection:
         self.Collection = self.load_collection()
         self.FirstAnalysis = self.Collection.values()[0]
 
+        self.SaveDir = make_runplan_string(self.RunPlan)
         self.Draw = RootDraw(self)
 
     def load_collection(self):
